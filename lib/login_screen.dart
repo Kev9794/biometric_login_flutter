@@ -13,6 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _isBiometricAvailable = false;
+  List<BiometricType> _availableBiometrics = [];
 
   @override
   void initState() {
@@ -21,15 +22,24 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkBiometricAvailability() async {
-    bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-    setState(() {
-      _isBiometricAvailable = canCheckBiometrics;
-    });
+    try {
+      bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      List<BiometricType> availableBiometrics =
+          await _localAuth.getAvailableBiometrics();
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool? loggedIn = prefs.getBool('loggedIn');
-    if (loggedIn == true) {
-      _authenticateWithBiometrics();
+      setState(() {
+        _isBiometricAvailable =
+            canCheckBiometrics && availableBiometrics.isNotEmpty;
+        _availableBiometrics = availableBiometrics;
+      });
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      bool? loggedIn = prefs.getBool('loggedIn');
+      if (loggedIn == true && _isBiometricAvailable) {
+        _authenticateWithBiometrics();
+      }
+    } catch (e) {
+      print('Error checking biometric availability: $e');
     }
   }
 
@@ -48,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      print(e);
+      print('Error during biometric authentication: $e');
     }
   }
 
